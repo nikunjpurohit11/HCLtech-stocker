@@ -1,4 +1,5 @@
 import { BacktestResult } from '../types';
+import { IStrategyService } from './interfaces';
 
 export interface StrategyRunOptions {
   strategyType: 'MA_CROSSOVER' | 'RSI' | 'BOLLINGER' | 'ML_MOMENTUM';
@@ -7,8 +8,8 @@ export interface StrategyRunOptions {
   parameters: Record<string, number | string>;
 }
 
-export class StrategyService {
-  public static async runBacktest(options: StrategyRunOptions): Promise<BacktestResult> {
+export class MockStrategyService implements IStrategyService {
+  public async runBacktest(options: StrategyRunOptions): Promise<BacktestResult> {
     const { initialCapital, strategyType } = options;
 
     let totalReturnPct = 24.6;
@@ -105,4 +106,11 @@ export class StrategyService {
       drawdownCurve,
     };
   }
+
+  // Static convenience wrapper
+  public static async runBacktest(options: StrategyRunOptions): Promise<BacktestResult> {
+    return new MockStrategyService().runBacktest(options);
+  }
 }
+
+export const StrategyService = MockStrategyService;

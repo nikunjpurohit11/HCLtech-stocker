@@ -1,78 +1,29 @@
 import { Transaction } from '../types';
+import { INITIAL_TRANSACTIONS } from '../data';
+import { ITransactionService } from './interfaces';
 
-const INITIAL_TRANSACTIONS: Transaction[] = [
-  {
-    id: 'TX-948201',
-    date: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
-    symbol: 'RELIANCE',
-    companyName: 'Reliance Industries Ltd.',
-    side: 'BUY',
-    orderType: 'MARKET',
-    quantity: 15,
-    price: 2975.50,
-    totalValue: 44632.50,
-    status: 'EXECUTED',
-  },
-  {
-    id: 'TX-948188',
-    date: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
-    symbol: 'TATAMOTORS',
-    companyName: 'Tata Motors Ltd.',
-    side: 'BUY',
-    orderType: 'LIMIT',
-    quantity: 25,
-    price: 982.00,
-    totalValue: 24550.00,
-    status: 'EXECUTED',
-  },
-  {
-    id: 'TX-947932',
-    date: new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString(),
-    symbol: 'INFY',
-    companyName: 'Infosys Ltd.',
-    side: 'SELL',
-    orderType: 'MARKET',
-    quantity: 20,
-    price: 1928.40,
-    totalValue: 38568.00,
-    realizedPnL: 2968.00,
-    status: 'EXECUTED',
-  },
-  {
-    id: 'TX-947610',
-    date: new Date(Date.now() - 4 * 24 * 60 * 60 * 1000).toISOString(),
-    symbol: 'HDFCBANK',
-    companyName: 'HDFC Bank Ltd.',
-    side: 'BUY',
-    orderType: 'LIMIT',
-    quantity: 30,
-    price: 1650.00,
-    totalValue: 49500.00,
-    status: 'EXECUTED',
-  },
-  {
-    id: 'TX-947104',
-    date: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
-    symbol: 'TCS',
-    companyName: 'Tata Consultancy Services Ltd.',
-    side: 'BUY',
-    orderType: 'MARKET',
-    quantity: 10,
-    price: 4210.00,
-    totalValue: 42100.00,
-    status: 'EXECUTED',
-  },
-];
-
-export class TransactionService {
+export class MockTransactionService implements ITransactionService {
   private static transactions: Transaction[] = [...INITIAL_TRANSACTIONS];
 
-  public static async getTransactions(limit?: number): Promise<Transaction[]> {
-    const list = [...this.transactions].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  public async getTransactions(limit?: number): Promise<Transaction[]> {
+    const list = [...MockTransactionService.transactions].sort(
+      (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
+    );
     return limit ? list.slice(0, limit) : list;
   }
 
+  public addTransaction(tx: Transaction): void {
+    MockTransactionService.transactions.unshift(tx);
+  }
+
+  // Static convenience wrappers
+  public static async getTransactions(limit?: number): Promise<Transaction[]> {
+    return new MockTransactionService().getTransactions(limit);
+  }
+
   public static addTransaction(tx: Transaction): void {
-    this.transactions.unshift(tx);
+    new MockTransactionService().addTransaction(tx);
   }
 }
+
+export const TransactionService = MockTransactionService;

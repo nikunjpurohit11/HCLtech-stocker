@@ -6,6 +6,8 @@ export type OrderType = 'MARKET' | 'LIMIT';
 
 export type OrderSide = 'BUY' | 'SELL';
 
+export type TrendRegime = 'UPTREND' | 'DOWNTREND' | 'SIDEWAYS';
+
 export interface HistoricalBar {
   date: string;
   timestamp: number;
@@ -24,6 +26,18 @@ export interface HistoricalBar {
   macd?: number;
   macdSignal?: number;
   macdHist?: number;
+}
+
+export interface StockPrice {
+  price: number;
+  change: number;
+  changePercent: number;
+  open: number;
+  high: number;
+  low: number;
+  previousClose: number;
+  volume: number;
+  timestamp: number;
 }
 
 export interface StockQuote {
@@ -46,11 +60,16 @@ export interface StockQuote {
   fiftyTwoWeekLow: number;
   rsi: number;
   volatility: number; // percentage
-  trend: 'UPTREND' | 'DOWNTREND' | 'SIDEWAYS';
+  trend: TrendRegime;
   signal: SignalType;
   signalConfidence: number; // 0-100
   sparkline: number[];
 }
+
+/**
+ * Standard Stock alias matching domain terminology
+ */
+export type Stock = StockQuote;
 
 export interface MarketIndex {
   symbol: string;
@@ -61,6 +80,16 @@ export interface MarketIndex {
   high: number;
   low: number;
   sparkline: number[];
+}
+
+export interface MarketSummary {
+  indices: MarketIndex[];
+  topGainers: StockQuote[];
+  topLosers: StockQuote[];
+  mostActive: StockQuote[];
+  marketStatus: 'OPEN' | 'CLOSED' | 'PRE_MARKET';
+  advanceDeclineRatio: number;
+  updatedAt: string;
 }
 
 export interface Holding {
@@ -95,6 +124,15 @@ export interface PortfolioSummary {
   var95: number; // Value at Risk 95%
 }
 
+export interface Portfolio {
+  id: string;
+  name: string;
+  summary: PortfolioSummary;
+  holdings: Holding[];
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface Transaction {
   id: string;
   date: string;
@@ -107,6 +145,17 @@ export interface Transaction {
   totalValue: number;
   realizedPnL?: number;
   status: 'EXECUTED' | 'PENDING' | 'CANCELLED';
+}
+
+export interface WatchlistItem {
+  id: string;
+  symbol: string;
+  companyName: string;
+  addedAt: string;
+  notes?: string;
+  targetPrice?: number;
+  alertHigh?: number;
+  alertLow?: number;
 }
 
 export interface RiskMetrics {
@@ -145,6 +194,8 @@ export interface MLPrediction {
   };
 }
 
+export type MLSignal = MLPrediction;
+
 export interface StrategyParams {
   id: string;
   name: string;
@@ -168,4 +219,11 @@ export interface BacktestResult {
   profitFactor: number;
   equityCurve: { date: string; strategy: number; benchmark: number }[];
   drawdownCurve: { date: string; drawdown: number }[];
+}
+
+export type StrategyResult = BacktestResult;
+
+export interface CorrelationRow {
+  symbol: string;
+  correlations: Record<string, number>;
 }

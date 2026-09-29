@@ -1,12 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { Holding, PortfolioSummary, StockQuote } from '../types';
-import { PortfolioService } from '../services/portfolioService';
+import { PortfolioService } from '../services';
 import { MetricCard } from '../components/common/MetricCard';
 import { PerformanceChart } from '../components/charts/PerformanceChart';
 import { DonutChart } from '../components/charts/DonutChart';
+import { HoldingsTable } from '../components/portfolio/HoldingsTable';
+import { LoadingSkeleton } from '../components/common/LoadingSkeleton';
+import { EmptyState } from '../components/common/EmptyState';
 import { Button } from '../components/common/Button';
-import { formatINR, formatPercent } from '../utils/formatters';
-import { Plus, ArrowUpRight, ArrowDownRight, RefreshCw, BookmarkPlus } from 'lucide-react';
+import { formatINR } from '../utils/formatters';
+import { Plus, RefreshCw, AlertTriangle, PieChart } from 'lucide-react';
 
 interface PortfolioPageProps {
   stocks: StockQuote[];
@@ -24,21 +27,48 @@ export const PortfolioPage: React.FC<PortfolioPageProps> = ({
   const [summary, setSummary] = useState<PortfolioSummary | null>(null);
   const [holdings, setHoldings] = useState<Holding[]>([]);
   const [sectors, setSectors] = useState<{ sector: string; value: number; percentage: number; color: string }[]>([]);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
 
   const loadData = async () => {
-    const [sum, h, s] = await Promise.all([
-      PortfolioService.getSummary(),
-      PortfolioService.getHoldings(),
-      PortfolioService.getSectorAllocation(),
-    ]);
-    setSummary(sum);
-    setHoldings(h);
-    setSectors(s);
+    setIsLoading(true);
+    setError(null);
+    try {
+      const [sum, h, s] = await Promise.all([
+        PortfolioService.getSummary(),
+        PortfolioService.getHoldings(),
+        PortfolioService.getSectorAllocation(),
+      ]);
+      setSummary(sum);
+      setHoldings(h);
+      setSectors(s);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to fetch portfolio positions');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   useEffect(() => {
     loadData();
   }, []);
+
+  const handleTradeSymbol = (symbol: string) => {
+    const found = stocks.find(s => s.symbol === symbol) || stocks[0];
+    if (found) onTradeStock(found);
+  };
+
+  if (error) {
+    return (
+      <EmptyState
+        icon={<AlertTriangle className="w-6 h-6 text-[#f43f5e]" />}
+        title="Portfolio Service Error"
+        description={error}
+        actionLabel="Retry Loading"
+        onAction={loadData}
+      />
+    );
+  }
 
   return (
     <div className="flex flex-col gap-6">
@@ -74,41 +104,53 @@ export const PortfolioPage: React.FC<PortfolioPageProps> = ({
       </div>
 
       {/* Metric Cards Row */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
-        <MetricCard
-          label="Portfolio Value"
-          value={formatINR(summary?.totalValue || 842560, { decimals: 0 })}
-          change="+1.50%"
-          isPositive={true}
-        />
-        <MetricCard
-          label="Cash Balance"
-          value={formatINR(summary?.cashBalance || 99165, { decimals: 0 })}
-          subtext="Available paper cash"
-        />
-        <MetricCard
-          label="Invested Value"
-          value={formatINR(summary?.investedValue || 730110, { decimals: 0 })}
-          subtext="Cost basis"
-        />
-        <MetricCard
-          label="Today's P&L"
-          value={`+${formatINR(summary?.todayPnL || 12430, { decimals: 0 })}`}
-          change="+1.50%"
-          isPositive={true}
-        />
-        <MetricCard
-          label="Total P&L"
-          value={`+${formatINR(summary?.totalPnL || 130950, { decimals: 0 })}`}
-          change="+18.42%"
-          isPositive={true}
-        />
-        <MetricCard
-          label="Sharpe / Beta"
-          value="1.24 / 0.94"
-          subtext="Risk normalized"
-        />
-      </div>
+      {isLoading ? (
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <div key={i} className="surface-panel rounded-xl p-4 h-24 flex flex-col justify-between">
+              <LoadingSkeleton className="h-3 w-20" />
+              <LoadingSkeleton className="h-7 w-24" />
+              <LoadingSkeleton className="h-2.5 w-16" />
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+          <MetricCard
+            label="Portfolio Value"
+            value={formatINR(summary?.totalValue || 842560, { decimals: 0 })}
+            change="+1.50%"
+            isPositive={true}
+          />
+          <MetricCard
+            label="Cash Balance"
+            value={formatINR(summary?.cashBalance || 99165, { decimals: 0 })}
+            subtext="Available paper cash"
+          />
+          <MetricCard
+            label="Invested Value"
+            value={formatINR(summary?.investedValue || 730110, { decimals: 0 })}
+            subtext="Cost basis"
+          />
+          <MetricCard
+            label="Today's P&L"
+            value={`+${formatINR(summary?.todayPnL || 12430, { decimals: 0 })}`}
+            change="+1.50%"
+            isPositive={true}
+          />
+          <MetricCard
+            label="Total P&L"
+            value={`+${formatINR(summary?.totalPnL || 130950, { decimals: 0 })}`}
+            change="+18.42%"
+            isPositive={true}
+          />
+          <MetricCard
+            label="Sharpe / Beta"
+            value="1.24 / 0.94"
+            subtext="Risk normalized"
+          />
+        </div>
+      )}
 
       {/* Performance vs Benchmark & Sector Donut */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -120,7 +162,7 @@ export const PortfolioPage: React.FC<PortfolioPageProps> = ({
         </div>
       </div>
 
-      {/* Holdings Table */}
+      {/* Holdings Section */}
       <div className="flex flex-col gap-3">
         <div className="flex items-center justify-between">
           <div>
@@ -133,100 +175,21 @@ export const PortfolioPage: React.FC<PortfolioPageProps> = ({
           </div>
         </div>
 
-        <div className="surface-panel rounded-xl overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs whitespace-nowrap">
-              <thead className="bg-[#141414] border-b border-[#313131] text-[#a7a7a7] uppercase tracking-wider text-[11px] font-medium">
-                <tr>
-                  <th className="py-3 px-4">Asset / Sector</th>
-                  <th className="py-3 px-4 text-right">Quantity</th>
-                  <th className="py-3 px-4 text-right">Avg Buy Price</th>
-                  <th className="py-3 px-4 text-right">Current Price</th>
-                  <th className="py-3 px-4 text-right">Invested</th>
-                  <th className="py-3 px-4 text-right">Market Value</th>
-                  <th className="py-3 px-4 text-right">Unrealized P&L</th>
-                  <th className="py-3 px-4 text-right">Weight</th>
-                  <th className="py-3 px-4 text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-[#252525]">
-                {holdings.map(h => {
-                  const isPos = h.unrealizedPnL >= 0;
-                  const matchingStock = stocks.find(s => s.symbol === h.symbol) || stocks[0];
-
-                  return (
-                    <tr
-                      key={h.symbol}
-                      className="hover:bg-[#252525]/40 transition-colors cursor-pointer group"
-                      onClick={() => onSelectStock(h.symbol)}
-                    >
-                      <td className="py-3.5 px-4">
-                        <div className="flex items-center gap-2.5">
-                          <span
-                            className="w-2 h-2 rounded-full shrink-0"
-                            style={{ backgroundColor: h.allocationColor }}
-                          />
-                          <div className="flex flex-col">
-                            <span className="font-semibold text-white font-mono group-hover:text-[#6798ff] transition-colors">
-                              {h.symbol}
-                            </span>
-                            <span className="text-[11px] text-[#7c7c7c] truncate max-w-[150px]">
-                              {h.companyName}
-                            </span>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="py-3.5 px-4 text-right font-mono text-white">
-                        {h.quantity}
-                      </td>
-                      <td className="py-3.5 px-4 text-right font-mono text-[#a7a7a7]">
-                        {formatINR(h.averagePrice)}
-                      </td>
-                      <td className="py-3.5 px-4 text-right font-mono text-white font-medium">
-                        {formatINR(h.currentPrice)}
-                      </td>
-                      <td className="py-3.5 px-4 text-right font-mono text-[#a7a7a7]">
-                        {formatINR(h.investedValue)}
-                      </td>
-                      <td className="py-3.5 px-4 text-right font-mono text-white font-medium">
-                        {formatINR(h.currentValue)}
-                      </td>
-                      <td className="py-3.5 px-4 text-right font-mono tabular-nums">
-                        <div
-                          className={`font-semibold ${
-                            isPos ? 'text-[#10b981]' : 'text-[#f43f5e]'
-                          }`}
-                        >
-                          {isPos ? '+' : ''}
-                          {formatINR(h.unrealizedPnL)}
-                        </div>
-                        <div className="text-[10px] text-[#7c7c7c]">
-                          {formatPercent(h.unrealizedPnLPercent, true)}
-                        </div>
-                      </td>
-                      <td className="py-3.5 px-4 text-right font-mono text-white">
-                        {h.portfolioWeight}%
-                      </td>
-                      <td
-                        className="py-3.5 px-4 text-right"
-                        onClick={e => e.stopPropagation()}
-                      >
-                        <div className="flex items-center justify-end gap-1.5">
-                          <button
-                            onClick={() => onTradeStock(matchingStock)}
-                            className="px-2.5 py-1 text-[11px] font-medium bg-[#141414] hover:bg-[#6798ff] hover:text-white text-[#a7a7a7] border border-[#313131] hover:border-[#6798ff] rounded transition-all cursor-pointer"
-                          >
-                            Trade
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        </div>
+        {holdings.length > 0 ? (
+          <HoldingsTable
+            holdings={holdings}
+            onSelectStock={onSelectStock}
+            onTradeStock={handleTradeSymbol}
+          />
+        ) : (
+          <EmptyState
+            icon={<PieChart className="w-6 h-6" />}
+            title="No Active Holdings"
+            description="You currently hold no equities in your paper portfolio. Execute your first buy order to begin tracking allocation."
+            actionLabel="Place First Order"
+            onAction={onOpenTradeModal}
+          />
+        )}
       </div>
     </div>
   );

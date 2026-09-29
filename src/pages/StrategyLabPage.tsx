@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { StockQuote, BacktestResult } from '../types';
-import { StrategyService } from '../services/strategyService';
+import { StrategyService } from '../services';
 import { Button } from '../components/common/Button';
 import { MetricCard } from '../components/common/MetricCard';
-import { formatINR, formatPercent } from '../utils/formatters';
-import { Play, RotateCcw, LineChart, TrendingUp, Sliders, CheckCircle2 } from 'lucide-react';
+import { EquityCurveChart } from '../components/charts/EquityCurveChart';
+import { formatINR } from '../utils/formatters';
+import { Play } from 'lucide-react';
 
 interface StrategyLabPageProps {
   stocks: StockQuote[];
@@ -357,7 +358,7 @@ export const StrategyLabPage: React.FC<StrategyLabPageProps> = ({ stocks }) => {
             />
           </div>
 
-          {/* Comparative Equity Curve SVG */}
+          {/* Comparative Equity Curve */}
           <div className="surface-panel rounded-xl p-5 flex flex-col gap-3">
             <div className="flex items-center justify-between border-b border-[#313131] pb-3">
               <div>
@@ -381,53 +382,7 @@ export const StrategyLabPage: React.FC<StrategyLabPageProps> = ({ stocks }) => {
               </div>
             </div>
 
-            <div className="relative w-full overflow-hidden select-none pt-2">
-              <svg viewBox="0 0 800 220" className="w-full h-auto block overflow-visible">
-                <defs>
-                  <linearGradient id="stratGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#6798ff" stopOpacity="0.25" />
-                    <stop offset="100%" stopColor="#6798ff" stopOpacity="0.0" />
-                  </linearGradient>
-                </defs>
-
-                {(() => {
-                  const data = result.equityCurve;
-                  const min = Math.min(...data.map(d => Math.min(d.strategy, d.benchmark))) * 0.98;
-                  const max = Math.max(...data.map(d => Math.max(d.strategy, d.benchmark))) * 1.02;
-                  const range = max - min || 1;
-
-                  const getX = (i: number) => 20 + (i / (data.length - 1)) * 740;
-                  const getY = (v: number) => 20 + (1 - (v - min) / range) * 160;
-
-                  const stratPath = data.map((d, i) => `${getX(i).toFixed(1)},${getY(d.strategy).toFixed(1)}`).join(' L ');
-                  const benchPath = data.map((d, i) => `${getX(i).toFixed(1)},${getY(d.benchmark).toFixed(1)}`).join(' L ');
-                  const areaPath = `M ${stratPath} L ${getX(data.length - 1)},180 L ${getX(0)},180 Z`;
-
-                  return (
-                    <>
-                      <path d={areaPath} fill="url(#stratGrad)" />
-                      <path d={`M ${benchPath}`} fill="none" stroke="#7c7c7c" strokeWidth="1.5" strokeDasharray="3,3" />
-                      <path d={`M ${stratPath}`} fill="none" stroke="#6798ff" strokeWidth="2" />
-
-                      {/* X labels */}
-                      {data.filter((_, idx) => idx % 3 === 0).map((d, i) => (
-                        <text
-                          key={i}
-                          x={getX(i * 3)}
-                          y="205"
-                          fill="#7c7c7c"
-                          fontSize="9"
-                          textAnchor="middle"
-                          className="font-mono"
-                        >
-                          {d.date}
-                        </text>
-                      ))}
-                    </>
-                  );
-                })()}
-              </svg>
-            </div>
+            <EquityCurveChart data={result.equityCurve} height={220} />
           </div>
         </>
       )}
