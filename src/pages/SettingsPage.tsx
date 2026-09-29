@@ -1,19 +1,87 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '../components/common/Button';
-import { CheckCircle2, RotateCcw, Shield, Sliders, User, Bell } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
+import { SettingsService } from '../services';
+import { supabase } from '../lib/supabase';
+import { CheckCircle2, Shield, Sliders, User, AlertCircle, LogOut } from 'lucide-react';
 
-export const SettingsPage: React.FC = () => {
-  const [userName, setUserName] = useState('Nikunj Purohit');
-  const [userEmail, setUserEmail] = useState('purohitnikunj19@gmail.com');
+interface SettingsPageProps {
+  onNavigate?: (path: string) => void;
+}
+
+export const SettingsPage: React.FC<SettingsPageProps> = ({ onNavigate }) => {
+  const { user, profile, refreshProfile, signOut } = useAuth();
+
+  const [userName, setUserName] = useState('');
+  const [userEmail, setUserEmail] = useState('');
   const [defaultChartRange, setDefaultChartRange] = useState('1Y');
   const [defaultOrderType, setDefaultOrderType] = useState('MARKET');
   const [riskLimit, setRiskLimit] = useState(15);
-  const [savedNotification, setSavedNotification] = useState(false);
+  const [notificationsEnabled, setNotificationsEnabled] = useState(true);
 
-  const handleSave = (e: React.FormEvent) => {
+  const [isSaving, setIsSaving] = useState(false);
+  const [notification, setNotification] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+
+  useEffect(() => {
+    if (user) {
+      setUserEmail(user.email || '');
+      setUserName(profile?.full_name || (user.user_metadata?.full_name as string) || '');
+    }
+
+    async function loadSettings() {
+      const s = await SettingsService.getSettings();
+      if (s) {
+        if (s.riskTolerance !== undefined) setRiskLimit(s.riskTolerance);
+        if (s.notificationsEnabled !== undefined) setNotificationsEnabled(s.notificationsEnabled);
+      }
+    }
+    loadSettings();
+  }, [user, profile]);
+
+  const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    setSavedNotification(true);
-    setTimeout(() => setSavedNotification(false), 2000);
+    setIsSaving(true);
+    setNotification(null);
+
+    try {
+      // 1. Update profiles table
+      if (user && userName) {
+        await supabase
+          .from('profiles')
+          .update({
+            full_name: userName,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', user.id);
+        await refreshProfile();
+      }
+
+      // 2. Update user_settings table
+      const success = await SettingsService.saveSettings({
+        theme: 'dark',
+        riskTolerance: riskLimit,
+        notificationsEnabled,
+      });
+
+      if (success) {
+        setNotification({ type: 'success', message: 'Preferences saved to Supabase successfully' });
+      } else {
+        setNotification({ type: 'error', message: 'Could not update user settings.' });
+      }
+    } catch (err) {
+      setNotification({
+        type: 'error',
+        message: err instanceof Error ? err.message : 'Failed to save settings',
+      });
+    } finally {
+      setIsSaving(false);
+      setTimeout(() => setNotification(null), 3000);
+    }
+  };
+
+  const handleSignOut = async () => {
+    await signOut();
+    if (onNavigate) onNavigate('/login');
   };
 
   return (
@@ -25,16 +93,35 @@ export const SettingsPage: React.FC = () => {
             Platform Settings & Configuration
           </h1>
           <p className="text-xs text-[#a7a7a7] mt-1">
-            Manage your user profile, simulated paper trading defaults, and risk thresholds.
+            Manage your user profile, simulated paper trading defaults, and Supabase risk thresholds.
           </p>
         </div>
 
-        {savedNotification && (
-          <div className="flex items-center gap-1.5 text-xs text-[#10b981] font-mono animate-in fade-in">
-            <CheckCircle2 className="w-4 h-4" />
-            <span>Preferences Saved</span>
-          </div>
-        )}
+        <div className="flex items-center gap-3">
+          {notification && (
+            <div
+              className={`flex items-center gap-1.5 text-xs font-mono animate-in fade-in ${
+                notification.type === 'success' ? 'text-[#10b981]' : 'text-[#f43f5e]'
+              }`}
+            >
+              {notification.type === 'success' ? (
+                <CheckCircle2 className="w-4 h-4" />
+              ) : (
+                <AlertCircle className="w-4 h-4" />
+              )}
+              <span>{notification.message}</span>
+            </div>
+          )}
+
+          <Button
+            variant="danger"
+            size="sm"
+            onClick={handleSignOut}
+            icon={<LogOut className="w-3.5 h-3.5" />}
+          >
+            Sign Out
+          </Button>
+        </div>
       </div>
 
       <form onSubmit={handleSave} className="flex flex-col gap-6">
@@ -56,19 +143,20 @@ export const SettingsPage: React.FC = () => {
                 type="text"
                 value={userName}
                 onChange={e => setUserName(e.target.value)}
+                placeholder="Nikunj Purohit"
                 className="w-full bg-[#141414] border border-[#313131] focus:border-[#6798ff] rounded-lg px-3 py-2 text-xs text-white focus:outline-none font-mono"
               />
             </div>
 
             <div>
               <label className="block text-xs font-medium text-[#a7a7a7] mb-1.5 uppercase font-mono">
-                Email Address
+                Email Address (Authenticated)
               </label>
               <input
                 type="email"
+                disabled
                 value={userEmail}
-                onChange={e => setUserEmail(e.target.value)}
-                className="w-full bg-[#141414] border border-[#313131] focus:border-[#6798ff] rounded-lg px-3 py-2 text-xs text-white focus:outline-none font-mono"
+                className="w-full bg-[#141414] border border-[#313131] rounded-lg px-3 py-2 text-xs text-[#7c7c7c] cursor-not-allowed font-mono"
               />
             </div>
           </div>
@@ -122,7 +210,7 @@ export const SettingsPage: React.FC = () => {
           <div className="flex items-center gap-2 border-b border-[#313131] pb-3">
             <Shield className="w-4 h-4 text-[#f59e0b]" />
             <span className="text-xs font-semibold text-white uppercase tracking-wider font-mono">
-              Portfolio Risk Controls
+              Portfolio Risk Controls (Stored in user_settings)
             </span>
           </div>
 
@@ -147,8 +235,8 @@ export const SettingsPage: React.FC = () => {
 
         {/* Save CTA */}
         <div className="flex items-center justify-end gap-3">
-          <Button variant="primary" size="md" type="submit">
-            Save Preferences
+          <Button variant="primary" size="md" type="submit" disabled={isSaving}>
+            {isSaving ? 'Saving to Database...' : 'Save Preferences'}
           </Button>
         </div>
       </form>

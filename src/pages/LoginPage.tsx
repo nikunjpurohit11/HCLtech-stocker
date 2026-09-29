@@ -1,32 +1,50 @@
 import React, { useState } from 'react';
 import { Button } from '../components/common/Button';
-import { Eye, EyeOff, Lock, Mail, ArrowRight, ShieldCheck } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
+import { Eye, EyeOff, Lock, Mail, ShieldCheck, AlertCircle } from 'lucide-react';
 
 interface LoginPageProps {
   onNavigate: (path: string) => void;
-  onLoginSuccess: () => void;
+  onLoginSuccess?: () => void;
 }
 
 export const LoginPage: React.FC<LoginPageProps> = ({ onNavigate, onLoginSuccess }) => {
-  const [email, setEmail] = useState('purohitnikunj19@gmail.com');
-  const [password, setPassword] = useState('password123');
+  const { signIn } = useAuth();
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState('');
+  const [error, setError] = useState<string | null>(null);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email || !password) {
       setError('Please provide your registered email and password.');
       return;
     }
-    setError('');
+    setError(null);
     setIsLoading(true);
-    setTimeout(() => {
+
+    try {
+      const { error: authError } = await signIn(email.trim(), password);
+
+      if (authError) {
+        if (authError.message.includes('Email not confirmed')) {
+          setError('Your email address has not been confirmed yet. Please check your inbox for the confirmation email or request a new confirmation.');
+        } else if (authError.message.includes('Invalid login credentials')) {
+          setError('Invalid email or password. Please verify your credentials or create a new account.');
+        } else {
+          setError(authError.message);
+        }
+      } else {
+        if (onLoginSuccess) onLoginSuccess();
+        onNavigate('/dashboard');
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'An unexpected error occurred during authentication.');
+    } finally {
       setIsLoading(false);
-      onLoginSuccess();
-      onNavigate('/dashboard');
-    }, 600);
+    }
   };
 
   return (
@@ -54,13 +72,13 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onNavigate, onLoginSuccess
               Institutional-grade market intelligence at your command.
             </h2>
             <p className="text-xs text-[#a7a7a7] leading-relaxed">
-              Sign in to access real-time NSE market indicators, portfolio valuations, automated backtests, and out-of-sample machine learning signals.
+              Sign in to access your persistent Supabase paper portfolio, real-time technical indicators, personal watchlists, and algorithmic models.
             </p>
           </div>
 
           <div className="mt-8 pt-6 border-t border-[#252525] flex items-center gap-3 text-xs text-[#7c7c7c] font-mono">
             <ShieldCheck className="w-4 h-4 text-[#10b981]" />
-            <span>Encrypted paper trading environment</span>
+            <span>Authenticated via Supabase Auth + RLS</span>
           </div>
         </div>
 
@@ -69,13 +87,14 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onNavigate, onLoginSuccess
           <div className="mb-6">
             <h3 className="text-lg font-semibold text-white tracking-tight">Sign In</h3>
             <p className="text-xs text-[#a7a7a7] mt-1">
-              Ready for Supabase Auth connection.
+              Enter your email and password to access your portfolio.
             </p>
           </div>
 
           {error && (
-            <div className="p-3 mb-4 rounded-lg bg-[#f43f5e]/15 border border-[#f43f5e]/30 text-xs text-[#f43f5e] font-mono">
-              {error}
+            <div className="p-3 mb-4 rounded-lg bg-[#f43f5e]/15 border border-[#f43f5e]/30 text-xs text-[#f43f5e] font-mono flex items-start gap-2">
+              <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+              <span>{error}</span>
             </div>
           )}
 
@@ -88,6 +107,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onNavigate, onLoginSuccess
                 <Mail className="w-4 h-4 text-[#7c7c7c] absolute left-3 top-1/2 -translate-y-1/2" />
                 <input
                   type="email"
+                  required
                   value={email}
                   onChange={e => setEmail(e.target.value)}
                   placeholder="analyst@firm.com"
@@ -106,6 +126,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onNavigate, onLoginSuccess
                 <Lock className="w-4 h-4 text-[#7c7c7c] absolute left-3 top-1/2 -translate-y-1/2" />
                 <input
                   type={showPassword ? 'text' : 'password'}
+                  required
                   value={password}
                   onChange={e => setPassword(e.target.value)}
                   placeholder="••••••••"
@@ -114,7 +135,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onNavigate, onLoginSuccess
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-[#7c7c7c] hover:text-white"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-[#7c7c7c] hover:text-white cursor-pointer"
                 >
                   {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
@@ -128,7 +149,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onNavigate, onLoginSuccess
               disabled={isLoading}
               className="mt-2 w-full"
             >
-              {isLoading ? 'Authenticating...' : 'Sign In to Terminal'}
+              {isLoading ? 'Authenticating with Supabase...' : 'Sign In to Terminal'}
             </Button>
           </form>
 

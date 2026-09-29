@@ -1,11 +1,13 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { StockQuote } from '../types';
 import { SignalBadge } from '../components/common/SignalBadge';
 import { Sparkline } from '../components/charts/Sparkline';
 import { Button } from '../components/common/Button';
 import { EmptyState } from '../components/common/EmptyState';
+import { LoadingSkeleton } from '../components/common/LoadingSkeleton';
+import { WatchlistService } from '../services';
 import { formatINR, formatPercent, formatVolume } from '../utils/formatters';
-import { Trash2, Plus, Bookmark, ChevronRight } from 'lucide-react';
+import { Trash2, Plus, Bookmark, ChevronRight, RefreshCw } from 'lucide-react';
 
 interface WatchlistPageProps {
   stocks: StockQuote[];
@@ -18,28 +20,51 @@ export const WatchlistPage: React.FC<WatchlistPageProps> = ({
   onSelectStock,
   onTradeStock,
 }) => {
-  const [watchlistSymbols, setWatchlistSymbols] = useState<string[]>([
-    'RELIANCE',
-    'TCS',
-    'HDFCBANK',
-    'INFY',
-    'ICICIBANK',
-    'TATAMOTORS',
-  ]);
+  const [watchlistSymbols, setWatchlistSymbols] = useState<string[]>([]);
   const [addSelectSymbol, setAddSelectSymbol] = useState<string>('');
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+
+  const loadWatchlist = async () => {
+    setIsLoading(true);
+    try {
+      const symbols = await WatchlistService.getWatchlistSymbols();
+      if (symbols && symbols.length > 0) {
+        setWatchlistSymbols(symbols);
+      } else {
+        // Fallback default set if new user
+        const defaults = ['RELIANCE', 'TCS', 'HDFCBANK', 'INFY'];
+        setWatchlistSymbols(defaults);
+        for (const s of defaults) {
+          await WatchlistService.addToWatchlist(s);
+        }
+      }
+    } catch {
+      setWatchlistSymbols(['RELIANCE', 'TCS', 'HDFCBANK', 'INFY']);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadWatchlist();
+  }, []);
 
   const watchlistStocks = stocks.filter(s => watchlistSymbols.includes(s.symbol));
   const availableToAdd = stocks.filter(s => !watchlistSymbols.includes(s.symbol));
 
-  const handleAddStock = () => {
+  const handleAddStock = async () => {
     if (addSelectSymbol && !watchlistSymbols.includes(addSelectSymbol)) {
-      setWatchlistSymbols([...watchlistSymbols, addSelectSymbol]);
+      const updated = [...watchlistSymbols, addSelectSymbol];
+      setWatchlistSymbols(updated);
+      await WatchlistService.addToWatchlist(addSelectSymbol);
       setAddSelectSymbol('');
     }
   };
 
-  const handleRemoveStock = (sym: string) => {
-    setWatchlistSymbols(watchlistSymbols.filter(s => s !== sym));
+  const handleRemoveStock = async (sym: string) => {
+    const updated = watchlistSymbols.filter(s => s !== sym);
+    setWatchlistSymbols(updated);
+    await WatchlistService.removeFromWatchlist(sym);
   };
 
   return (
@@ -55,36 +80,53 @@ export const WatchlistPage: React.FC<WatchlistPageProps> = ({
           </p>
         </div>
 
-        {/* Add Stock Selector */}
-        {availableToAdd.length > 0 && (
-          <div className="flex items-center gap-2">
-            <select
-              value={addSelectSymbol}
-              onChange={e => setAddSelectSymbol(e.target.value)}
-              className="bg-[#141414] border border-[#313131] rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:border-[#6798ff] font-mono"
-            >
-              <option value="">Select stock to track...</option>
-              {availableToAdd.map(s => (
-                <option key={s.symbol} value={s.symbol}>
-                  {s.symbol} - {s.companyName}
-                </option>
-              ))}
-            </select>
-            <Button
-              variant="primary"
-              size="sm"
-              onClick={handleAddStock}
-              disabled={!addSelectSymbol}
-              icon={<Plus className="w-3.5 h-3.5" />}
-            >
-              Add
-            </Button>
-          </div>
-        )}
+        {/* Add Stock Selector & Refresh */}
+        <div className="flex items-center gap-2">
+          <button
+            onClick={loadWatchlist}
+            className="p-1.5 text-[#7c7c7c] hover:text-white rounded hover:bg-[#1e1e1e] transition-colors cursor-pointer"
+            title="Refresh Watchlist"
+          >
+            <RefreshCw className="w-4 h-4" />
+          </button>
+
+          {availableToAdd.length > 0 && (
+            <div className="flex items-center gap-2">
+              <select
+                value={addSelectSymbol}
+                onChange={e => setAddSelectSymbol(e.target.value)}
+                className="bg-[#141414] border border-[#313131] rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:border-[#6798ff] font-mono"
+              >
+                <option value="">Select stock to track...</option>
+                {availableToAdd.map(s => (
+                  <option key={s.symbol} value={s.symbol}>
+                    {s.symbol} - {s.companyName}
+                  </option>
+                ))}
+              </select>
+              <Button
+                variant="primary"
+                size="sm"
+                onClick={handleAddStock}
+                disabled={!addSelectSymbol}
+                icon={<Plus className="w-3.5 h-3.5" />}
+              >
+                Add
+              </Button>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Watchlist Table */}
-      {watchlistStocks.length > 0 ? (
+      {isLoading ? (
+        <div className="surface-panel rounded-xl p-4 flex flex-col gap-3">
+          <LoadingSkeleton className="h-8 w-full" />
+          <LoadingSkeleton className="h-10 w-full" />
+          <LoadingSkeleton className="h-10 w-full" />
+          <LoadingSkeleton className="h-10 w-full" />
+        </div>
+      ) : watchlistStocks.length > 0 ? (
         <div className="surface-panel rounded-xl overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs whitespace-nowrap">
@@ -197,7 +239,11 @@ export const WatchlistPage: React.FC<WatchlistPageProps> = ({
           title="Watchlist is Empty"
           description="You haven't pinned any stocks to your personal watchlist yet. Browse market equities to track momentum and ML signals."
           actionLabel="Add Default Bluechips"
-          onAction={() => setWatchlistSymbols(['RELIANCE', 'TCS', 'HDFCBANK', 'INFY'])}
+          onAction={() => {
+            const defaults = ['RELIANCE', 'TCS', 'HDFCBANK', 'INFY'];
+            setWatchlistSymbols(defaults);
+            defaults.forEach(s => WatchlistService.addToWatchlist(s));
+          }}
         />
       )}
     </div>

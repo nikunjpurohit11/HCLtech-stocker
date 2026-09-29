@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { Transaction } from '../types';
-import { TransactionService } from '../services/transactionService';
+import { TransactionService } from '../services';
 import { Button } from '../components/common/Button';
+import { EmptyState } from '../components/common/EmptyState';
+import { LoadingSkeleton } from '../components/common/LoadingSkeleton';
 import { formatINR, formatDate } from '../utils/formatters';
-import { Download, Filter, Search } from 'lucide-react';
+import { Download, Search, History, RefreshCw } from 'lucide-react';
 
 interface TransactionsPageProps {
   onSelectStock: (symbol: string) => void;
@@ -13,13 +15,22 @@ export const TransactionsPage: React.FC<TransactionsPageProps> = ({ onSelectStoc
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [filterSide, setFilterSide] = useState<'ALL' | 'BUY' | 'SELL'>('ALL');
   const [search, setSearch] = useState('');
+  const [isLoading, setIsLoading] = useState<boolean>(true);
 
-  useEffect(() => {
-    async function load() {
+  const loadTransactions = async () => {
+    setIsLoading(true);
+    try {
       const list = await TransactionService.getTransactions();
       setTransactions(list);
+    } catch {
+      setTransactions([]);
+    } finally {
+      setIsLoading(false);
     }
-    load();
+  };
+
+  useEffect(() => {
+    loadTransactions();
   }, []);
 
   const filtered = transactions.filter(t => {
@@ -32,6 +43,8 @@ export const TransactionsPage: React.FC<TransactionsPageProps> = ({ onSelectStoc
   });
 
   const handleExportCSV = () => {
+    if (filtered.length === 0) return;
+
     const headers = ['Order ID', 'Date', 'Symbol', 'Side', 'Type', 'Quantity', 'Price', 'Total Value', 'Status'];
     const rows = filtered.map(t => [
       t.id,
@@ -64,15 +77,23 @@ export const TransactionsPage: React.FC<TransactionsPageProps> = ({ onSelectStoc
             Transaction History & Ledger
           </h1>
           <p className="text-xs text-[#a7a7a7] mt-1">
-            Complete audit trail of all executed paper buy and sell orders.
+            Complete audit trail of all executed paper buy and sell orders persisted in Supabase.
           </p>
         </div>
 
         <div className="flex items-center gap-2">
+          <button
+            onClick={loadTransactions}
+            className="p-1.5 text-[#7c7c7c] hover:text-white rounded hover:bg-[#1e1e1e] transition-colors cursor-pointer"
+            title="Refresh Ledger"
+          >
+            <RefreshCw className="w-4 h-4" />
+          </button>
           <Button
             variant="secondary"
             size="sm"
             onClick={handleExportCSV}
+            disabled={filtered.length === 0}
             icon={<Download className="w-3.5 h-3.5" />}
           >
             Export to CSV
@@ -121,78 +142,93 @@ export const TransactionsPage: React.FC<TransactionsPageProps> = ({ onSelectStoc
         </div>
       </div>
 
-      {/* Transactions Table */}
-      <div className="surface-panel rounded-xl overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs whitespace-nowrap">
-            <thead className="bg-[#141414] border-b border-[#313131] text-[#a7a7a7] uppercase tracking-wider text-[11px] font-medium">
-              <tr>
-                <th className="py-3 px-4">Order ID</th>
-                <th className="py-3 px-4">Timestamp</th>
-                <th className="py-3 px-4">Asset</th>
-                <th className="py-3 px-4 text-center">Side</th>
-                <th className="py-3 px-4 text-center">Type</th>
-                <th className="py-3 px-4 text-right">Quantity</th>
-                <th className="py-3 px-4 text-right">Price</th>
-                <th className="py-3 px-4 text-right">Gross Value</th>
-                <th className="py-3 px-4 text-center">Status</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-[#252525]">
-              {filtered.map(tx => (
-                <tr
-                  key={tx.id}
-                  className="hover:bg-[#252525]/40 transition-colors cursor-pointer group"
-                  onClick={() => onSelectStock(tx.symbol)}
-                >
-                  <td className="py-3 px-4 font-mono text-white font-medium">
-                    {tx.id}
-                  </td>
-                  <td className="py-3 px-4 font-mono text-[#7c7c7c]">
-                    {formatDate(tx.date)}
-                  </td>
-                  <td className="py-3 px-4">
-                    <span className="font-semibold text-white font-mono group-hover:text-[#6798ff] transition-colors">
-                      {tx.symbol}
-                    </span>
-                    <span className="text-[11px] text-[#7c7c7c] ml-2 truncate">
-                      {tx.companyName}
-                    </span>
-                  </td>
-                  <td className="py-3 px-4 text-center">
-                    <span
-                      className={`inline-block px-2 py-0.5 rounded text-[11px] font-semibold font-mono ${
-                        tx.side === 'BUY'
-                          ? 'bg-[#10b981]/15 text-[#10b981]'
-                          : 'bg-[#f43f5e]/15 text-[#f43f5e]'
-                      }`}
-                    >
-                      {tx.side}
-                    </span>
-                  </td>
-                  <td className="py-3 px-4 text-center font-mono text-[#a7a7a7]">
-                    {tx.orderType}
-                  </td>
-                  <td className="py-3 px-4 text-right font-mono text-white">
-                    {tx.quantity}
-                  </td>
-                  <td className="py-3 px-4 text-right font-mono text-[#a7a7a7]">
-                    {formatINR(tx.price)}
-                  </td>
-                  <td className="py-3 px-4 text-right font-mono font-medium text-white">
-                    {formatINR(tx.totalValue)}
-                  </td>
-                  <td className="py-3 px-4 text-center">
-                    <span className="inline-block px-2 py-0.5 bg-[#141414] border border-[#313131] rounded text-[10px] font-mono text-[#10b981]">
-                      {tx.status}
-                    </span>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+      {/* Transactions Table or Empty / Loading State */}
+      {isLoading ? (
+        <div className="surface-panel rounded-xl p-4 flex flex-col gap-3">
+          <LoadingSkeleton className="h-8 w-full" />
+          <LoadingSkeleton className="h-10 w-full" />
+          <LoadingSkeleton className="h-10 w-full" />
+          <LoadingSkeleton className="h-10 w-full" />
         </div>
-      </div>
+      ) : filtered.length > 0 ? (
+        <div className="surface-panel rounded-xl overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs whitespace-nowrap">
+              <thead className="bg-[#141414] border-b border-[#313131] text-[#a7a7a7] uppercase tracking-wider text-[11px] font-medium">
+                <tr>
+                  <th className="py-3 px-4">Order ID</th>
+                  <th className="py-3 px-4">Timestamp</th>
+                  <th className="py-3 px-4">Asset</th>
+                  <th className="py-3 px-4 text-center">Side</th>
+                  <th className="py-3 px-4 text-center">Type</th>
+                  <th className="py-3 px-4 text-right">Quantity</th>
+                  <th className="py-3 px-4 text-right">Price</th>
+                  <th className="py-3 px-4 text-right">Gross Value</th>
+                  <th className="py-3 px-4 text-center">Status</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-[#252525]">
+                {filtered.map(tx => (
+                  <tr
+                    key={tx.id}
+                    className="hover:bg-[#252525]/40 transition-colors cursor-pointer group"
+                    onClick={() => onSelectStock(tx.symbol)}
+                  >
+                    <td className="py-3 px-4 font-mono text-white font-medium">
+                      {tx.id}
+                    </td>
+                    <td className="py-3 px-4 font-mono text-[#7c7c7c]">
+                      {formatDate(tx.date)}
+                    </td>
+                    <td className="py-3 px-4">
+                      <span className="font-semibold text-white font-mono group-hover:text-[#6798ff] transition-colors">
+                        {tx.symbol}
+                      </span>
+                      <span className="text-[11px] text-[#7c7c7c] ml-2 truncate">
+                        {tx.companyName}
+                      </span>
+                    </td>
+                    <td className="py-3 px-4 text-center">
+                      <span
+                        className={`inline-block px-2 py-0.5 rounded text-[11px] font-semibold font-mono ${
+                          tx.side === 'BUY'
+                            ? 'bg-[#10b981]/15 text-[#10b981]'
+                            : 'bg-[#f43f5e]/15 text-[#f43f5e]'
+                        }`}
+                      >
+                        {tx.side}
+                      </span>
+                    </td>
+                    <td className="py-3 px-4 text-center font-mono text-[#a7a7a7]">
+                      {tx.orderType}
+                    </td>
+                    <td className="py-3 px-4 text-right font-mono text-white">
+                      {tx.quantity}
+                    </td>
+                    <td className="py-3 px-4 text-right font-mono text-[#a7a7a7]">
+                      {formatINR(tx.price)}
+                    </td>
+                    <td className="py-3 px-4 text-right font-mono font-medium text-white">
+                      {formatINR(tx.totalValue)}
+                    </td>
+                    <td className="py-3 px-4 text-center">
+                      <span className="inline-block px-2 py-0.5 bg-[#141414] border border-[#313131] rounded text-[10px] font-mono text-[#10b981]">
+                        {tx.status}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      ) : (
+        <EmptyState
+          icon={<History className="w-6 h-6" />}
+          title="No Transactions Yet"
+          description="Execute your first paper trade on any security to begin logging trade history and audit records."
+        />
+      )}
     </div>
   );
 };

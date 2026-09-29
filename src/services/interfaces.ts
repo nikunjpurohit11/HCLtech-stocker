@@ -12,7 +12,7 @@ import {
   CorrelationRow,
   MLPrediction,
   BacktestResult,
-  StrategyParams,
+  WatchlistItem,
 } from '../types';
 
 export interface IMarketService {
@@ -44,7 +44,25 @@ export interface IPortfolioService {
 
 export interface ITransactionService {
   getTransactions(limit?: number): Promise<Transaction[]>;
-  addTransaction(tx: Transaction): void;
+  addTransaction(tx: Transaction): Promise<void>;
+}
+
+export interface IWatchlistService {
+  getWatchlistSymbols(): Promise<string[]>;
+  getWatchlistItems(): Promise<WatchlistItem[]>;
+  addToWatchlist(symbol: string, notes?: string, targetPrice?: number): Promise<boolean>;
+  removeFromWatchlist(symbol: string): Promise<boolean>;
+}
+
+export interface IUserSettings {
+  theme?: string;
+  riskTolerance?: number;
+  notificationsEnabled?: boolean;
+}
+
+export interface ISettingsService {
+  getSettings(): Promise<IUserSettings>;
+  saveSettings(settings: IUserSettings): Promise<boolean>;
 }
 
 export interface IAnalyticsService {

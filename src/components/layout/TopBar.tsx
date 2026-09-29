@@ -1,7 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Search, Bell, Plus, Menu, X, CheckCircle, TrendingUp } from 'lucide-react';
+import { Search, Bell, Plus, Menu, X, CheckCircle, TrendingUp, LogIn, LogOut, User as UserIcon } from 'lucide-react';
 import { StockQuote, MarketIndex } from '../../types';
 import { formatINR, formatPercent } from '../../utils/formatters';
+import { useAuth } from '../../context/AuthContext';
 
 interface TopBarProps {
   stocks: StockQuote[];
@@ -20,6 +21,7 @@ export const TopBar: React.FC<TopBarProps> = ({
   onOpenMobileMenu,
   onNavigate,
 }) => {
+  const { user, profile, signOut } = useAuth();
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
@@ -28,6 +30,22 @@ export const TopBar: React.FC<TopBarProps> = ({
   const searchContainerRef = useRef<HTMLDivElement>(null);
   const notificationsRef = useRef<HTMLDivElement>(null);
   const profileRef = useRef<HTMLDivElement>(null);
+
+  const displayName = profile?.full_name || (user?.user_metadata?.full_name as string) || (user?.email ? user.email.split('@')[0] : 'Guest Analyst');
+  const displayEmail = user?.email || 'Guest Mode (Unauthenticated)';
+  const initials = displayName
+    .split(' ')
+    .filter(Boolean)
+    .map(w => w[0])
+    .join('')
+    .slice(0, 2)
+    .toUpperCase() || 'GT';
+
+  const handleSignOut = async () => {
+    setIsProfileOpen(false);
+    await signOut();
+    onNavigate('/login');
+  };
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -207,21 +225,30 @@ export const TopBar: React.FC<TopBarProps> = ({
           )}
         </div>
 
-        {/* User Profile Avatar */}
+        {/* User Profile / Auth Avatar */}
         <div className="relative" ref={profileRef}>
           <button
             onClick={() => setIsProfileOpen(!isProfileOpen)}
             className="w-8 h-8 rounded-lg bg-[#1e1e1e] border border-[#313131] hover:border-[#6798ff] flex items-center justify-center text-xs font-mono font-bold text-white transition-colors cursor-pointer"
+            title={user ? `${displayName} (${displayEmail})` : 'Guest Mode (Click to Sign In)'}
           >
-            NP
+            {initials}
           </button>
 
           {isProfileOpen && (
-            <div className="absolute right-0 mt-2 w-56 bg-[#1e1e1e] border border-[#313131] rounded-xl shadow-2xl p-2 z-50 text-xs">
+            <div className="absolute right-0 mt-2 w-64 bg-[#1e1e1e] border border-[#313131] rounded-xl shadow-2xl p-2 z-50 text-xs animate-in fade-in zoom-in-95 duration-100">
               <div className="px-3 py-2 border-b border-[#252525]">
-                <p className="font-semibold text-white">Nikunj Purohit</p>
-                <p className="text-[11px] text-[#7c7c7c] font-mono truncate">purohitnikunj19@gmail.com</p>
+                <div className="flex items-center justify-between">
+                  <p className="font-semibold text-white truncate">{displayName}</p>
+                  {user && (
+                    <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-[#10b981]/20 text-[#10b981] border border-[#10b981]/30">
+                      Supabase
+                    </span>
+                  )}
+                </div>
+                <p className="text-[11px] text-[#7c7c7c] font-mono truncate mt-0.5">{displayEmail}</p>
               </div>
+
               <div className="py-1">
                 <button
                   onClick={() => {
@@ -234,6 +261,24 @@ export const TopBar: React.FC<TopBarProps> = ({
                 </button>
                 <button
                   onClick={() => {
+                    onNavigate('/watchlist');
+                    setIsProfileOpen(false);
+                  }}
+                  className="w-full text-left px-3 py-1.5 rounded hover:bg-[#252525] text-[#a7a7a7] hover:text-white transition-colors cursor-pointer"
+                >
+                  Watchlist
+                </button>
+                <button
+                  onClick={() => {
+                    onNavigate('/transactions');
+                    setIsProfileOpen(false);
+                  }}
+                  className="w-full text-left px-3 py-1.5 rounded hover:bg-[#252525] text-[#a7a7a7] hover:text-white transition-colors cursor-pointer"
+                >
+                  Transaction Ledger
+                </button>
+                <button
+                  onClick={() => {
                     onNavigate('/settings');
                     setIsProfileOpen(false);
                   }}
@@ -241,15 +286,39 @@ export const TopBar: React.FC<TopBarProps> = ({
                 >
                   Settings & Preferences
                 </button>
-                <button
-                  onClick={() => {
-                    onNavigate('/login');
-                    setIsProfileOpen(false);
-                  }}
-                  className="w-full text-left px-3 py-1.5 rounded hover:bg-[#252525] text-[#f43f5e] transition-colors cursor-pointer mt-1 border-t border-[#252525] pt-1.5"
-                >
-                  Sign Out
-                </button>
+
+                {user ? (
+                  <button
+                    onClick={handleSignOut}
+                    className="w-full text-left px-3 py-1.5 rounded hover:bg-[#252525] text-[#f43f5e] transition-colors cursor-pointer mt-1 border-t border-[#252525] pt-1.5 flex items-center gap-2"
+                  >
+                    <LogOut className="w-3.5 h-3.5" />
+                    <span>Sign Out</span>
+                  </button>
+                ) : (
+                  <div className="mt-1 border-t border-[#252525] pt-1.5 flex flex-col gap-1">
+                    <button
+                      onClick={() => {
+                        onNavigate('/login');
+                        setIsProfileOpen(false);
+                      }}
+                      className="w-full text-left px-3 py-1.5 rounded bg-[#6798ff]/10 hover:bg-[#6798ff]/20 text-[#6798ff] font-medium transition-colors cursor-pointer flex items-center gap-2"
+                    >
+                      <LogIn className="w-3.5 h-3.5" />
+                      <span>Sign In with Supabase</span>
+                    </button>
+                    <button
+                      onClick={() => {
+                        onNavigate('/register');
+                        setIsProfileOpen(false);
+                      }}
+                      className="w-full text-left px-3 py-1.5 rounded hover:bg-[#252525] text-[#a7a7a7] hover:text-white transition-colors cursor-pointer flex items-center gap-2"
+                    >
+                      <UserIcon className="w-3.5 h-3.5" />
+                      <span>Create Account</span>
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
           )}
