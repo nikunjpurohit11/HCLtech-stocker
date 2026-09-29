@@ -1,0 +1,6 @@
+{
+  "name": "Vertex Advanced Stock Trading & Portfolio Platform",
+  "description": "Sophisticated stock-market analytics, institutional portfolio management, paper-trading, risk analytics, and ML-assisted research platform.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

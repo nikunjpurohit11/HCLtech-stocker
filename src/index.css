@@ -1,0 +1,75 @@
+@import "tailwindcss";
+
+@layer base {
+  :root {
+    --bg-primary: #0a0a0a;
+    --bg-secondary: #141414;
+    --bg-card: #1e1e1e;
+    --border-subtle: #313131;
+    --border-strong: #454545;
+    --text-primary: #ffffff;
+    --text-secondary: #a7a7a7;
+    --text-muted: #7c7c7c;
+    --accent-primary: #6798ff;
+    --success: #10b981;
+    --danger: #f43f5e;
+    --warning: #f59e0b;
+    --aurora: #8b5cf6;
+  }
+
+  body {
+    background-color: var(--bg-primary);
+    color: var(--text-primary);
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    overflow-x: hidden;
+  }
+
+  /* Monospace font utility for numbers, tickers, technical parameters */
+  .font-mono, .tabular-nums {
+    font-family: 'JetBrains Mono', monospace;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .font-editorial {
+    font-family: 'Source Serif 4', Georgia, serif;
+  }
+}
+
+/* Custom hairline borders and scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #0a0a0a;
+}
+::-webkit-scrollbar-thumb {
+  background: #313131;
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #454545;
+}
+
+/* Smooth tooltips and hairline surface utility */
+.hairline-border {
+  border: 1px solid #313131;
+}
+
+.hairline-border-strong {
+  border: 1px solid #454545;
+}
+
+.surface-panel {
+  background-color: #1e1e1e;
+  border: 1px solid #313131;
+}
+
+.surface-dark {
+  background-color: #141414;
+}
+
+/* Subtle aurora glow layer for marketing / AI moments */
+.aurora-glow {
+  background: radial-gradient(circle at 50% 0%, rgba(139, 92, 246, 0.12) 0%, rgba(103, 152, 255, 0.06) 40%, transparent 75%);
+}
