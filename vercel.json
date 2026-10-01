@@ -1,0 +1,32 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "services": {
+    "web": {
+      "root": ".",
+      "framework": "vite",
+      "buildCommand": "bun run build",
+      "outputDirectory": "dist"
+    },
+    "backend": {
+      "root": "backend",
+      "framework": "python",
+      "runtime": "python@3.11",
+      "buildCommand": "pip install -r requirements.txt",
+      "entrypoint": "app/main.py"
+    }
+  },
+  "rewrites": [
+    {
+      "source": "/api/(.*)",
+      "destination": {
+        "service": "backend"
+      }
+    },
+    {
+      "source": "/(.*)",
+      "destination": {
+        "service": "web"
+      }
+    }
+  ]
+}
