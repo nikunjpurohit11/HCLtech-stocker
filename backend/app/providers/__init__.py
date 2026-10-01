@@ -10,10 +10,12 @@ from .market_data import (
     set_market_data_provider,
     REQUIRED_OHLCV_COLUMNS,
 )
+from .yahoo_finance import YahooFinanceMarketDataProvider
 
 __all__ = [
     "MarketDataProvider",
     "UnconfiguredMarketDataProvider",
+    "YahooFinanceMarketDataProvider",
     "MarketDataUnavailableError",
     "get_market_data_provider",
     "set_market_data_provider",

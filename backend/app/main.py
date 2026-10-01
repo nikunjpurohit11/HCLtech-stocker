@@ -37,6 +37,15 @@ app.include_router(predictions_router, prefix=settings.API_PREFIX)
 app.include_router(backtesting_router, prefix=settings.API_PREFIX)
 
 
+@app.on_event("startup")
+async def on_startup():
+    """
+    Initializes ML inference artifacts and verifies provider connectivity on startup.
+    """
+    from .services.prediction_service import PredictionService
+    PredictionService.load_artifacts()
+
+
 @app.get("/", include_in_schema=False)
 async def root():
     """

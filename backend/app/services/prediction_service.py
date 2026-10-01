@@ -247,7 +247,22 @@ class PredictionService:
 
         # Retrieve OHLCV series
         df = await active_provider.get_historical_ohlcv(sym)
-        if df is None or df.empty or len(df) < 20:
+        if df is None or df.empty:
+            return PredictionResponse(
+                symbol=sym,
+                model_name=None,
+                model_type="XGBClassifier",
+                predicted_direction=None,
+                probability=None,
+                prediction_horizon="next_day_direction",
+                prediction_date=datetime.now(timezone.utc).isoformat(),
+                feature_importance=None,
+                model_performance=None,
+                status="symbol_not_found",
+                message=f"No market data found for symbol '{sym}'. Please verify that the ticker symbol is valid.",
+            )
+
+        if len(df) < 200:
             return PredictionResponse(
                 symbol=sym,
                 model_name=None,
@@ -259,7 +274,10 @@ class PredictionService:
                 feature_importance=None,
                 model_performance=None,
                 status="insufficient_data",
-                message=f"Insufficient historical price records ({0 if df is None else len(df)}) to compute 12 technical features for '{sym}'.",
+                message=(
+                    f"Insufficient historical price observations ({len(df)}) for '{sym}'. "
+                    "At least 200 trading days of historical data are required to compute 200-day Simple Moving Average (SMA_200)."
+                ),
             )
 
         # Compute technical features using exact Colab methodology

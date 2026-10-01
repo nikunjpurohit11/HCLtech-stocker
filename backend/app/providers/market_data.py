@@ -89,19 +89,36 @@ class UnconfiguredMarketDataProvider(MarketDataProvider):
         return None
 
 
-# Global active provider instance (Defaults to UnconfiguredMarketDataProvider)
-_active_provider: MarketDataProvider = UnconfiguredMarketDataProvider()
+# Global active provider cache
+_active_provider: Optional[MarketDataProvider] = None
 
 
 def get_market_data_provider() -> MarketDataProvider:
-    """Returns the globally configured market data provider instance."""
+    """
+    Returns the active market data provider based on configuration settings.
+    Supports 'yahoo_finance' and 'unconfigured'.
+    """
+    global _active_provider
+    if _active_provider is not None:
+        return _active_provider
+
+    from ..core.config import settings
+
+    provider_choice = settings.MARKET_DATA_PROVIDER.lower().strip()
+    if provider_choice == "yahoo_finance":
+        from .yahoo_finance import YahooFinanceMarketDataProvider
+        _active_provider = YahooFinanceMarketDataProvider()
+        logger.info("Initialized active MarketDataProvider: YahooFinanceMarketDataProvider")
+    else:
+        _active_provider = UnconfiguredMarketDataProvider()
+        logger.info("Initialized active MarketDataProvider: UnconfiguredMarketDataProvider")
+
     return _active_provider
 
 
 def set_market_data_provider(provider: MarketDataProvider) -> None:
     """
-    Configures or swaps the active market data provider implementation.
-    Enables future pluggable integration of yfinance, AlphaVantage, Polygon, etc.
+    Explicitly overrides or swaps the active market data provider implementation.
     """
     global _active_provider
     if not isinstance(provider, MarketDataProvider):

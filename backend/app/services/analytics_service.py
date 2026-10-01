@@ -57,7 +57,22 @@ class AnalyticsService:
         # 2. Fetch historical OHLCV from pluggable provider
         try:
             df = await active_provider.get_historical_ohlcv(sym)
-            if df is None or df.empty or len(df) < 5:
+            if df is None or df.empty:
+                return StockAnalyticsResponse(
+                    symbol=sym,
+                    annual_return=None,
+                    volatility=None,
+                    sharpe_ratio=None,
+                    sortino_ratio=None,
+                    max_drawdown=None,
+                    var_95=None,
+                    beta=None,
+                    cagr=None,
+                    status="symbol_not_found",
+                    message=f"No market data found for symbol '{sym}'. Please verify that the ticker symbol is valid.",
+                )
+
+            if len(df) < 30:
                 return StockAnalyticsResponse(
                     symbol=sym,
                     annual_return=None,
@@ -69,7 +84,7 @@ class AnalyticsService:
                     beta=None,
                     cagr=None,
                     status="insufficient_data",
-                    message=f"Insufficient historical price observations returned for symbol '{sym}'.",
+                    message=f"Insufficient historical price observations ({len(df)}) returned for symbol '{sym}'. Minimum 30 trading days required for statistical analytics.",
                 )
 
             # 3. Use 'Adj Close' consistently with training methodology

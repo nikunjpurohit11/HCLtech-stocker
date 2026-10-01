@@ -33,5 +33,8 @@ class Settings:
     # Machine learning artifacts directory
     ML_MODELS_DIR: Path = Path(os.getenv("ML_MODELS_DIR", str(BASE_DIR / "ml")))
 
+    # Market Data Provider selection: "yahoo_finance" or "unconfigured"
+    MARKET_DATA_PROVIDER: str = os.getenv("MARKET_DATA_PROVIDER", "yahoo_finance")
+
 
 settings = Settings()
