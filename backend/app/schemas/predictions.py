@@ -26,6 +26,47 @@ ML_FEATURE_NAMES: List[str] = [
 ]
 
 
+class PredictionRequest(BaseModel):
+    """
+    Request payload containing the 12 required market features for ML inference.
+    Supports either nested {"features": {...}} or direct top-level key-value mapping.
+    """
+    features: Optional[Dict[str, float]] = Field(
+        None,
+        description="Dictionary containing the 12 exact market features required by model_config.json"
+    )
+
+    class Config:
+        extra = "allow"
+        json_schema_extra = {
+            "example": {
+                "features": {
+                    "Adj Close": 2850.5,
+                    "Volume": 4200000.0,
+                    "Daily_Return": 0.0125,
+                    "SMA_20": 2810.0,
+                    "SMA_50": 2780.0,
+                    "SMA_200": 2650.0,
+                    "Momentum_10": 0.035,
+                    "Volatility_20": 0.185,
+                    "RSI_14": 58.4,
+                    "MACD": 12.3,
+                    "Price_SMA20_Ratio": 1.014,
+                    "Price_SMA50_Ratio": 1.025
+                }
+            }
+        }
+
+    def get_features_dict(self) -> Dict[str, float]:
+        """
+        Extracts features dictionary from nested 'features' or top-level extra fields.
+        """
+        if self.features and isinstance(self.features, dict):
+            return self.features
+        extra_data = {k: float(v) for k, v in self.__dict__.items() if k != "features" and v is not None}
+        return extra_data
+
+
 class PredictionResponse(BaseModel):
     """
     Response schema for ML directional prediction.
