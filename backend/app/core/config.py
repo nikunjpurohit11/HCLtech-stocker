@@ -25,10 +25,17 @@ class Settings:
     
     @property
     def CORS_ORIGINS(self) -> List[str]:
+        origins = list(self._default_cors)
         origins_env = os.getenv("CORS_ORIGINS")
         if origins_env:
-            return [o.strip() for o in origins_env.split(",") if o.strip()]
-        return self._default_cors
+            origins.extend([o.strip() for o in origins_env.split(",") if o.strip()])
+        vercel_url = os.getenv("VERCEL_URL")
+        if vercel_url:
+            origins.append(f"https://{vercel_url}")
+        prod_url = os.getenv("VERCEL_PROJECT_PRODUCTION_URL")
+        if prod_url:
+            origins.append(f"https://{prod_url}")
+        return list(dict.fromkeys(origins))
 
     # Machine learning artifacts directory
     ML_MODELS_DIR: Path = Path(os.getenv("ML_MODELS_DIR", str(BASE_DIR / "ml")))
