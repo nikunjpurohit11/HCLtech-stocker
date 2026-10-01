@@ -1,0 +1,19 @@
+{
+    "features": [
+        "Adj Close",
+        "Volume",
+        "Daily_Return",
+        "SMA_20",
+        "SMA_50",
+        "SMA_200",
+        "Momentum_10",
+        "Volatility_20",
+        "RSI_14",
+        "MACD",
+        "Price_SMA20_Ratio",
+        "Price_SMA50_Ratio"
+    ],
+    "target": "Target",
+    "model": "XGBoost",
+    "prediction_type": "next_day_direction"
+}
