@@ -9,10 +9,7 @@
     },
     "backend": {
       "root": "backend",
-      "framework": "python",
-      "runtime": "python@3.11",
-      "buildCommand": "pip install -r requirements.txt",
-      "entrypoint": "app/main.py"
+      "framework": "fastapi"
     }
   },
   "rewrites": [
