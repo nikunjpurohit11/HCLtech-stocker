@@ -38,7 +38,21 @@ class Settings:
         return list(dict.fromkeys(origins))
 
     # Machine learning artifacts directory
-    ML_MODELS_DIR: Path = Path(os.getenv("ML_MODELS_DIR", str(BASE_DIR / "ml")))
+    @property
+    def ML_MODELS_DIR(self) -> Path:
+        env_val = os.getenv("ML_MODELS_DIR")
+        if env_val:
+            return Path(env_val)
+        candidates = [
+            BASE_DIR / "ml",
+            Path.cwd() / "backend" / "ml",
+            Path.cwd() / "ml",
+            Path(__file__).resolve().parent.parent.parent / "ml",
+        ]
+        for c in candidates:
+            if c.exists() and (c / "xgboost_stock_model.pkl").exists():
+                return c
+        return BASE_DIR / "ml"
 
     # Market Data Provider selection: "yahoo_finance" or "unconfigured"
     MARKET_DATA_PROVIDER: str = os.getenv("MARKET_DATA_PROVIDER", "yahoo_finance")

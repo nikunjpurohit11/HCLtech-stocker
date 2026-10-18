@@ -3,14 +3,33 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.openapi.docs import get_redoc_html, get_swagger_ui_html
 from fastapi.responses import JSONResponse, RedirectResponse
 
-from .core.config import settings
-from .api.routes import (
-    health_router,
-    analytics_router,
-    risk_router,
-    predictions_router,
-    backtesting_router,
-)
+import sys
+from pathlib import Path
+
+# Ensure backend root directory is in sys.path
+_current_file = Path(__file__).resolve()
+_backend_root = _current_file.parent.parent
+if str(_backend_root) not in sys.path:
+    sys.path.insert(0, str(_backend_root))
+
+try:
+    from .core.config import settings
+    from .api.routes import (
+        health_router,
+        analytics_router,
+        risk_router,
+        predictions_router,
+        backtesting_router,
+    )
+except (ImportError, ValueError):
+    from app.core.config import settings
+    from app.api.routes import (
+        health_router,
+        analytics_router,
+        risk_router,
+        predictions_router,
+        backtesting_router,
+    )
 
 app = FastAPI(
     title=settings.PROJECT_NAME,
@@ -65,7 +84,10 @@ async def on_startup():
     """
     Initializes ML inference artifacts and verifies provider connectivity on startup.
     """
-    from .services.prediction_service import PredictionService
+    try:
+        from .services.prediction_service import PredictionService
+    except (ImportError, ValueError):
+        from app.services.prediction_service import PredictionService
     PredictionService.load_artifacts()
 
 
